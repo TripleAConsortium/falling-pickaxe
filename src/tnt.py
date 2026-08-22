@@ -2,10 +2,19 @@ import pygame
 import pymunk
 import math
 import random
+import weakref
 from constants import BLOCK_SIZE
 from constants import CHUNK_HEIGHT, CHUNK_WIDTH
 from chunk import chunks
 from explosion import Explosion
+
+# Spaces that already have the TNT/block collision handler registered
+_tnt_handler_spaces = weakref.WeakSet()
+
+def _on_tnt_block_collision(arbiter, space, data):
+    # Small random rotation on collision; shapes[0] is the TNT (type 3)
+    tnt = arbiter.shapes[0].block_ref
+    tnt.body.angle += random.choice([0.01, -0.01])
 
 class Tnt:
     _font = None
@@ -43,8 +52,10 @@ class Tnt:
 
         self.space.add(self.body, self.shape)
 
-        handler = space.add_collision_handler(3, 2)  # TNT & Block collision
-        handler.post_solve = self.on_collision
+        # TNT & Block collision handler, registered once per space
+        if space not in _tnt_handler_spaces:
+            space.on_collision(3, 2, post_solve=_on_tnt_block_collision)
+            _tnt_handler_spaces.add(space)
 
         self.detonated = False
         self.spawn_time = pygame.time.get_ticks()
@@ -61,10 +72,6 @@ class Tnt:
         # transparent destination and renders solid white. draw() refills this each frame.
         self._overlay_surface = pygame.Surface(self.texture.get_size(), pygame.SRCALPHA)
         self._overlay_surface.fill((255, 255, 255))
-
-    def on_collision(self, arbiter, space, data):
-        # Small random rotation on collision
-        self.body.angle += random.choice([0.01, -0.01])
 
     def _explode_with_radius(self, explosions, explosion_radius, damage_scale, particle_count):
         self.detonated = True

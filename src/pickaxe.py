@@ -80,8 +80,7 @@ class Pickaxe:
         self.space.add(self.body, *self.shapes)
 
         # Add collision handler for pickaxe & blocks
-        handler = space.add_collision_handler(1, 2)  # (Pickaxe type, Block type)
-        handler.post_solve = self.on_collision
+        space.on_collision(1, 2, post_solve=self.on_collision)  # (Pickaxe type, Block type)
 
     def on_collision(self, arbiter, space, data):
         """Handles collision with blocks: Reduce HP or destroy the block."""
